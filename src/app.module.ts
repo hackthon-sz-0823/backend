@@ -1,0 +1,32 @@
+import { Module } from '@nestjs/common';
+import { PrismaModule } from './shared/prisma/prisma.module';
+import { ConfigModule } from '@nestjs/config';
+import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { GraphQLModule } from '@nestjs/graphql';
+import { RestDemoModule } from './rest/rest-demo/rest-demo.module';
+import { GraphDemoModule } from './graphql/graph-demo/graph-demo.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true, // 设为全局模块，这样在其他模块中无需再导入
+      envFilePath: '.env', // 指定环境变量文件路径
+      expandVariables: true, // 支持变量扩展，例如 ${PORT}
+    }),
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      driver: ApolloDriver,
+      playground: true, // 启用 GraphQL Playground
+      introspection: true,
+      autoSchemaFile: true,
+      debug: true,
+    }),
+
+    // 导入我们的演示模块
+    PrismaModule,
+    RestDemoModule,
+    GraphDemoModule,
+  ],
+  controllers: [],
+  providers: [],
+})
+export class AppModule {}

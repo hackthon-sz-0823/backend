@@ -1,0 +1,269 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================
+// 分类记录表 - 存储垃圾分类数据
+// =====================================================
+model Classification {
+  id                 Int      @id @default(autoincrement())
+  walletAddress      String   @map("wallet_address") @db.VarChar(42) // 用户钱包地址
+  imageUrl           String   @map("image_url") @db.Text // 上传的垃圾图片URL
+  expectedCategory   String   @map("expected_category") @db.VarChar(50) // 用户选择的分类
+  aiDetectedCategory String?  @map("ai_detected_category") @db.VarChar(50) // AI识别的分类
+  aiConfidence       Decimal? @map("ai_confidence") @db.Decimal(3, 2) // AI置信度 0.00-1.00
+  isCorrect          Boolean  @default(false) @map("is_correct") // 分类是否正确
+  score              Int      @default(0) // 本次分类获得的积分
+  aiAnalysis         String?  @map("ai_analysis") @db.Text // AI详细分析结果
+  aiResponse         Json?    @map("ai_response") // 完整的AI响应JSON
+  processingTimeMs   Int?     @map("processing_time_ms") // AI处理耗时(毫秒)
+  userLocation       String?  @map("user_location") @db.VarChar(100) // 用户位置信息
+  deviceInfo         String?  @map("device_info") @db.VarChar(200) // 设备信息
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // 关联关系 - 注意：由于多态关系，这里注释掉直接外键关联
+  // scoreTransactions ScoreTransaction[] // 一个分类可以产生多个积分交易
+
+  // 索引
+  @@index([walletAddress], name: "idx_classifications_wallet")
+  @@index([createdAt], name: "idx_classifications_created_at")
+  @@index([isCorrect], name: "idx_classifications_is_correct")
+  @@index([aiDetectedCategory], name: "idx_classifications_ai_category")
+  @@map("classifications")
+}
+
+// =====================================================
+// 积分交易表 - 记录所有积分变动
+// =====================================================
+model ScoreTransaction {
+  id            Int      @id @default(autoincrement())
+  walletAddress String   @map("wallet_address") @db.VarChar(42) // 钱包地址
+  amount        Int // 积分变动数量(正数为获得，负数为消耗)
+  type          String   @db.VarChar(50) // 交易类型: classification, achievement, daily_bonus, nft_claim 等
+  referenceId   Int?     @map("reference_id") // 关联的业务ID
+  referenceType String?  @map("reference_type") @db.VarChar(50) // 关联的业务类型
+  description   String?  @db.Text // 交易描述
+  metadata      Json? // 额外的元数据
+  isValid       Boolean  @default(true) @map("is_valid") // 交易是否有效
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // 索引
+  @@index([walletAddress], name: "idx_score_transactions_wallet")
+  @@index([type], name: "idx_score_transactions_type")
+  @@index([createdAt], name: "idx_score_transactions_created_at")
+  @@index([referenceId, referenceType], name: "idx_score_transactions_reference")
+  @@map("score_transactions")
+}
+
+// =====================================================
+// 成就定义表 - 预定义的成就类型
+// =====================================================
+model Achievement {
+  id           Int       @id @default(autoincrement())
+  code         String    @unique @db.VarChar(50) // 成就代码，如 "first_classification"
+  name         String    @db.VarChar(100) // 成就名称
+  description  String    @db.Text // 成就描述
+  scoreReward  Int       @map("score_reward") // 成就奖励积分
+  iconUrl      String?   @map("icon_url") @db.Text // 成就图标URL
+  category     String    @db.VarChar(50) // 成就分类: milestone, streak, accuracy, social 等
+  tier         Int       @default(1) // 成就等级 1-5
+  isActive     Boolean   @default(true) @map("is_active") // 是否启用
+  requirements Json? // 成就触发条件JSON
+  maxClaims    Int?      @map("max_claims") // 最大领取次数，null为无限制
+  validFrom    DateTime? @map("valid_from") // 有效期开始
+  validUntil   DateTime? @map("valid_until") // 有效期结束
+  sortOrder    Int       @default(0) @map("sort_order") // 排序权重
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // 关联关系 - 注意：由于多态关系，这里注释掉直接外键关联
+  walletAchievements WalletAchievement[] // 用户解锁的成就
+  // scoreTransactions  ScoreTransaction[] // 成就产生的积分交易
+
+  // 索引
+  @@index([code], name: "idx_achievements_code")
+  @@index([category], name: "idx_achievements_category")
+  @@index([isActive], name: "idx_achievements_active")
+  @@map("achievements")
+}
+
+// =====================================================
+// 钱包成就关联表 - 用户解锁的成就记录
+// =====================================================
+model WalletAchievement {
+  id            Int       @id @default(autoincrement())
+  walletAddress String    @map("wallet_address") @db.VarChar(42) // 钱包地址
+  achievementId Int       @map("achievement_id") // 成就ID
+  progress      Int       @default(0) // 完成进度 0-100
+  isCompleted   Boolean   @default(false) @map("is_completed") // 是否已完成
+  isClaimed     Boolean   @default(false) @map("is_claimed") // 是否已领取奖励
+  completedAt   DateTime? @map("completed_at") // 完成时间
+  claimedAt     DateTime? @map("claimed_at") // 领取时间
+  metadata      Json? // 成就相关的额外数据
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // 关联关系
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  // 唯一约束：一个钱包地址只能有一个相同的成就记录
+  @@unique([walletAddress, achievementId], name: "unique_wallet_achievement")
+  @@index([walletAddress], name: "idx_wallet_achievements_wallet")
+  @@index([achievementId], name: "idx_wallet_achievements_achievement")
+  @@index([isCompleted], name: "idx_wallet_achievements_completed")
+  @@map("wallet_achievements")
+}
+
+// =====================================================
+// NFT池表 - 预先铸造的NFT集合
+// =====================================================
+model NftPool {
+  id              Int     @id @default(autoincrement())
+  tokenId         Int?    @map("token_id") // 链上TokenID
+  contractAddress String  @map("contract_address") @db.VarChar(42) // 合约地址
+  metadataUri     String  @map("metadata_uri") @db.Text // IPFS元数据URI
+  imageUrl        String? @map("image_url") @db.Text // 图片URL(缓存)
+  name            String  @db.VarChar(100) // NFT名称
+  description     String? @db.Text // NFT描述
+  status          String  @default("AVAILABLE") @db.VarChar(20) // AVAILABLE, RESERVED, CLAIMED, DISABLED
+  rarity          Int     @default(1) // 稀有度 1-5 (1普通-5传说)
+  category        String  @db.VarChar(50) // NFT类别: achievement, milestone, special, seasonal
+
+  // 领取条件
+  requiredScore           Int?     @map("required_score") // 需要的最低积分
+  requiredClassifications Int?     @map("required_classifications") // 需要的分类次数
+  requiredAccuracy        Decimal? @map("required_accuracy") @db.Decimal(5, 2) // 需要的准确率
+  requiredAchievements    String[] @map("required_achievements") @db.VarChar(50) // 需要的成就代码列表
+  requiredLevel           Int?     @map("required_level") // 需要的用户等级
+
+  // 领取信息
+  claimedByWallet String?   @map("claimed_by_wallet") @db.VarChar(42) // 被领取的钱包地址
+  claimedAt       DateTime? @map("claimed_at") // 领取时间
+  reservedUntil   DateTime? @map("reserved_until") // 预留截止时间
+
+  // NFT属性
+  attributes      Json? // NFT属性JSON
+  externalUrl     String? @map("external_url") @db.Text // 外部链接
+  animationUrl    String? @map("animation_url") @db.Text // 动画URL
+  backgroundColor String? @map("background_color") @db.VarChar(7) // 背景色
+
+  // 管理字段
+  isActive  Boolean  @default(true) @map("is_active") // 是否启用
+  sortOrder Int      @default(0) @map("sort_order") // 排序权重
+  createdBy String?  @map("created_by") @db.VarChar(42) // 创建者钱包
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 关联关系
+  nftClaims NftClaim[] // NFT领取记录
+
+  // 索引
+  @@index([status], name: "idx_nft_pool_status")
+  @@index([rarity], name: "idx_nft_pool_rarity")
+  @@index([category], name: "idx_nft_pool_category")
+  @@index([requiredScore], name: "idx_nft_pool_required_score")
+  @@index([claimedByWallet], name: "idx_nft_pool_claimed_by")
+  @@index([tokenId], name: "idx_nft_pool_token_id")
+  @@map("nft_pool")
+}
+
+// =====================================================
+// NFT领取记录表 - 记录用户的NFT领取历史
+// =====================================================
+model NftClaim {
+  id            Int    @id @default(autoincrement())
+  walletAddress String @map("wallet_address") @db.VarChar(42) // 领取者钱包地址
+  nftPoolId     Int    @map("nft_pool_id") // NFT池ID
+
+  // 区块链交易信息
+  transactionHash String? @map("transaction_hash") @db.VarChar(66) // 交易哈希
+  blockNumber     BigInt? @map("block_number") // 区块高度
+  gasUsed         BigInt? @map("gas_used") // 消耗的gas
+  gasFee          String? @map("gas_fee") @db.VarChar(50) // gas费用(wei)
+
+  // 状态跟踪
+  status        String  @default("PENDING") @db.VarChar(20) // PENDING, CONFIRMED, FAILED, CANCELLED
+  failureReason String? @map("failure_reason") @db.Text // 失败原因
+  retryCount    Int     @default(0) @map("retry_count") // 重试次数
+
+  // 时间戳
+  requestedAt DateTime  @default(now()) @map("requested_at") // 请求时间
+  confirmedAt DateTime? @map("confirmed_at") // 确认时间
+  failedAt    DateTime? @map("failed_at") // 失败时间
+
+  // 额外信息
+  userAgent String? @map("user_agent") @db.Text // 用户代理
+  ipAddress String? @map("ip_address") @db.VarChar(45) // IP地址
+  metadata  Json? // 额外的元数据
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 关联关系
+  nftPool NftPool @relation(fields: [nftPoolId], references: [id], onDelete: Cascade)
+
+  // 索引
+  @@index([walletAddress], name: "idx_nft_claims_wallet")
+  @@index([nftPoolId], name: "idx_nft_claims_nft_pool")
+  @@index([status], name: "idx_nft_claims_status")
+  @@index([transactionHash], name: "idx_nft_claims_tx_hash")
+  @@index([requestedAt], name: "idx_nft_claims_requested_at")
+  @@map("nft_claims")
+}
+
+// =====================================================
+// 系统配置表 - 存储系统级别的配置信息
+// =====================================================
+model SystemConfig {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique @db.VarChar(100) // 配置键
+  value       String   @db.Text // 配置值
+  type        String   @db.VarChar(20) // 类型: string, number, boolean, json
+  category    String   @db.VarChar(50) // 配置分类: scoring, nft, achievement, system
+  description String?  @db.Text // 配置描述
+  isPublic    Boolean  @default(false) @map("is_public") // 是否对外公开
+  isActive    Boolean  @default(true) @map("is_active") // 是否启用
+  updatedBy   String?  @map("updated_by") @db.VarChar(42) // 最后更新者
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 索引
+  @@index([category], name: "idx_system_config_category")
+  @@index([isActive], name: "idx_system_config_active")
+  @@map("system_config")
+}
+
+// =====================================================
+// API调用日志表 - 记录重要的API调用
+// =====================================================
+model ApiLog {
+  id            Int      @id @default(autoincrement())
+  walletAddress String?  @map("wallet_address") @db.VarChar(42) // 调用者钱包(可选)
+  endpoint      String   @db.VarChar(200) // API端点
+  method        String   @db.VarChar(10) // HTTP方法
+  statusCode    Int      @map("status_code") // 响应状态码
+  responseTime  Int      @map("response_time") // 响应时间(毫秒)
+  userAgent     String?  @map("user_agent") @db.Text // 用户代理
+  ipAddress     String?  @map("ip_address") @db.VarChar(45) // IP地址
+  requestSize   Int?     @map("request_size") // 请求大小(字节)
+  responseSize  Int?     @map("response_size") // 响应大小(字节)
+  errorMessage  String?  @map("error_message") @db.Text // 错误信息
+  metadata      Json? // 额外的日志信息
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // 索引 - 只保留最近30天的日志
+  @@index([walletAddress], name: "idx_api_logs_wallet")
+  @@index([endpoint], name: "idx_api_logs_endpoint")
+  @@index([createdAt], name: "idx_api_logs_created_at")
+  @@index([statusCode], name: "idx_api_logs_status")
+  @@map("api_logs")
+}
