@@ -5,7 +5,6 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { GraphQLModule } from '@nestjs/graphql';
 import { RestDemoModule } from './rest/rest-demo/rest-demo.module';
 import { GraphDemoModule } from './graphql/graph-demo/graph-demo.module';
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -21,8 +20,8 @@ import { GraphDemoModule } from './graphql/graph-demo/graph-demo.module';
       debug: true,
     }),
 
-    // 导入我们的演示模块
     PrismaModule,
+    // 演示模块
     RestDemoModule,
     GraphDemoModule,
   ],

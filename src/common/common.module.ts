@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ResponseInterceptor } from './interceptors/response.interceptor';
 
+@Global()
 @Module({
   providers: [
     {
@@ -10,4 +11,4 @@ import { ResponseInterceptor } from './interceptors/response.interceptor';
     },
   ],
 })
-export class RestCommonModule {}
+export class CommonModule {}
