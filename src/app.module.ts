@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from './shared/prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { GraphQLModule } from '@nestjs/graphql';
 import { RestDemoModule } from './rest/rest-demo/rest-demo.module';
 import { GraphDemoModule } from './graphql/graph-demo/graph-demo.module';
+import { NftModule } from './rest/nft/nft.module';
+import { SharedModule } from './shared/shared.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -19,11 +20,11 @@ import { GraphDemoModule } from './graphql/graph-demo/graph-demo.module';
       autoSchemaFile: true,
       debug: true,
     }),
-
-    PrismaModule,
+    SharedModule,
     // 演示模块
     RestDemoModule,
     GraphDemoModule,
+    NftModule,
   ],
   controllers: [],
   providers: [],
