@@ -456,9 +456,13 @@ export class NftService {
         throw new Error('Admin wallet address not configured');
       }
 
+      // ✅ 修复：传递正确的参数给mintNFT方法
       const mintResult = await this.blockchainService.mintNFT(
-        adminAddress,
-        metadataUri,
+        adminAddress, // to: 接收者地址
+        metadataUri, // tokenURI: 元数据URI
+        dto.name, // name: NFT名称
+        dto.category || 'achievement', // category: NFT类别
+        dto.rarity, // rarity: 稀有度 (1-5)
       );
 
       this.logger.log(
@@ -469,8 +473,7 @@ export class NftService {
       const nft = await this.prisma.prismaClient.nftPool.create({
         data: {
           tokenId: mintResult.tokenId,
-          // TODO: 合约地址
-          contractAddress: '0x',
+          contractAddress: process.env.NFT_CONTRACT_ADDRESS || '0x',
           metadataUri: metadataUri,
           imageUrl: dto.imageUrl,
           name: dto.name,

@@ -2,6 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { NFT_CONTRACT_ADDRESS, WASTEWISE_ABI } from './const';
+import { NFTCategory, NFTRarity } from '../nft.information';
 
 export interface MintResult {
   tokenId: number;
@@ -25,7 +26,13 @@ export interface NetworkInfo {
 }
 
 type WasteWiseContract = ethers.Contract & {
-  mintNFT(to: string, tokenURI: string): Promise<ethers.TransactionResponse>;
+  mintNFT(
+    to: string,
+    metadataURI: string,
+    name: string,
+    category: number,
+    rarity: number,
+  ): Promise<ethers.TransactionResponse>;
   transferNFT(to: string, tokenId: number): Promise<ethers.TransactionResponse>;
   getTotalSupply(): Promise<bigint>;
 };
@@ -89,7 +96,13 @@ export class BlockchainService {
   /**
    * 铸造NFT到指定地址
    */
-  async mintNFT(to: string, tokenURI: string): Promise<MintResult> {
+  async mintNFT(
+    to: string,
+    tokenURI: string,
+    name: string = 'WasteWise NFT',
+    category: string = 'achievement',
+    rarity: number = 1,
+  ): Promise<MintResult> {
     try {
       this.ensureInitialized();
 
@@ -97,10 +110,25 @@ export class BlockchainService {
         throw new Error('Contract not initialized');
       }
 
-      this.logger.log(`Minting NFT to ${to} with URI: ${tokenURI}`);
+      // 映射类别字符串到枚举值
+      const categoryEnum = this.mapCategoryToEnum(category);
+      // 映射稀有度数字到枚举值
+      const rarityEnum = this.mapRarityToEnum(rarity);
 
-      // 调用合约的mintNFT方法
-      const tx = await this.contract.mintNFT(to, tokenURI);
+      this.logger.log(`Minting NFT to ${to} with URI: ${tokenURI}`);
+      this.logger.log(
+        `Name: ${name}, Category: ${category}(${categoryEnum}), Rarity: ${rarity}(${rarityEnum})`,
+      );
+
+      // ✅ 调用合约的mintNFT方法 - 使用正确的5个参数
+      const tx = await this.contract.mintNFT(
+        to, // address to
+        tokenURI, // string metadataURI
+        name, // string name
+        categoryEnum, // enum category
+        rarityEnum, // enum rarity
+      );
+
       this.logger.log(`Transaction sent: ${tx.hash}`);
 
       // 等待交易确认
@@ -113,6 +141,8 @@ export class BlockchainService {
       if (!receipt || !receipt.logs) {
         throw new Error('Transaction receipt is null or missing logs');
       }
+
+      // 查找NFTMinted事件
       const mintEvent = receipt.logs.find((log: ethers.Log) => {
         try {
           if (!this.contract) return false;
@@ -128,10 +158,6 @@ export class BlockchainService {
 
       if (!mintEvent) {
         throw new Error('NFTMinted event not found in transaction logs');
-      }
-
-      if (!this.contract) {
-        throw new Error('Contract not initialized');
       }
 
       const parsedEvent = this.contract.interface.parseLog({
@@ -308,5 +334,32 @@ export class BlockchainService {
       hasWallet: !!this.wallet,
       hasContract: !!this.contract,
     };
+  }
+
+  /**
+   * 映射类别字符串到枚举值
+   */
+  private mapCategoryToEnum(category: string): NFTCategory {
+    const categoryMap: { [key: string]: NFTCategory } = {
+      general: NFTCategory.GENERAL,
+      achievement: NFTCategory.ACHIEVEMENT,
+      special: NFTCategory.SPECIAL,
+      limited: NFTCategory.LIMITED,
+    };
+    return categoryMap[category.toLowerCase()] || NFTCategory.GENERAL;
+  }
+
+  /**
+   * 映射稀有度数字到枚举值
+   */
+  private mapRarityToEnum(rarity: number): NFTRarity {
+    const rarityMap: { [key: number]: NFTRarity } = {
+      1: NFTRarity.COMMON,
+      2: NFTRarity.UNCOMMON,
+      3: NFTRarity.RARE,
+      4: NFTRarity.EPIC,
+      5: NFTRarity.LEGENDARY,
+    };
+    return rarityMap[rarity] || NFTRarity.COMMON;
   }
 }

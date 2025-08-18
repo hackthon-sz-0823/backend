@@ -39,12 +39,14 @@ export class IPFSService {
   private readonly pinataSecretKey: string;
   private readonly pinataGateway: string;
   private readonly frontendUrl: string;
+  private readonly pinataJWT: string;
 
   constructor() {
     this.pinataApiKey = process.env.PINATA_API_KEY ?? '';
-    this.pinataSecretKey = process.env.PINATA_SECRET_KEY ?? '';
+    this.pinataSecretKey = process.env.PINATA_SECRET_API_KEY ?? '';
     this.pinataGateway =
       process.env.PINATA_GATEWAY ?? 'https://gateway.pinata.cloud';
+    this.pinataJWT = process.env.PINATA_JWT ?? '';
     this.frontendUrl = process.env.FRONTEND_URL ?? '';
 
     if (!this.pinataApiKey || !this.pinataSecretKey) {
@@ -75,6 +77,7 @@ export class IPFSService {
         body,
         {
           headers: {
+            Authorization: `Bearer ${process.env.PINATA_JWT}`,
             'Content-Type': 'application/json',
             pinata_api_key: this.pinataApiKey,
             pinata_secret_api_key: this.pinataSecretKey,
