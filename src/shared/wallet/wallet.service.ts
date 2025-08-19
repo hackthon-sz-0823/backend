@@ -42,6 +42,7 @@ export interface WalletStats {
   averageScorePerDay: number;
   classificationAccuracy: number;
   activeDays: number;
+  totalClassifications: number;
 }
 
 @Injectable()
@@ -370,6 +371,7 @@ export class WalletService {
         averageScorePerDay,
         classificationAccuracy,
         activeDays: uniqueDays,
+        totalClassifications, // ✅ 添加这个字段到返回对象中
       };
 
       this.logger.log(
