@@ -6,6 +6,7 @@ import { RestDemoModule } from './rest/rest-demo/rest-demo.module';
 import { GraphDemoModule } from './graphql/graph-demo/graph-demo.module';
 import { NftModule } from './rest/nft/nft.module';
 import { SharedModule } from './shared/shared.module';
+import { AchievementModule } from './rest/achievement/achievement.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -25,6 +26,7 @@ import { SharedModule } from './shared/shared.module';
     RestDemoModule,
     GraphDemoModule,
     NftModule,
+    AchievementModule,
   ],
   controllers: [],
   providers: [],
