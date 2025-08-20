@@ -8,6 +8,7 @@ import { NftModule } from './rest/nft/nft.module';
 import { SharedModule } from './shared/shared.module';
 import { AchievementModule } from './rest/achievement/achievement.module';
 import { ClassificationModule } from './rest/classification/classification.module';
+import { CommonModule } from './common/common.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -22,6 +23,7 @@ import { ClassificationModule } from './rest/classification/classification.modul
       autoSchemaFile: true,
       debug: true,
     }),
+    CommonModule,
     SharedModule,
     // 演示模块
     RestDemoModule,
