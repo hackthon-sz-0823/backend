@@ -12,7 +12,6 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
 
   private readonly client: PrismaClient;
-
   constructor() {
     // 主库实例（用于写操作）
     this.client = new PrismaClient({
@@ -39,7 +38,8 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Initializing database connections...');
       // 初次连接前激活数据库
       this.logger.log('Activating database connection...');
-      await this.client.$executeRaw`SELECT 1`; // 激活数据库
+      // 🔥 简单激活：唤醒 AWS RDS
+      await this.client.$queryRaw`SELECT current_timestamp as wake_up_time`;
       this.logger.log('Database activated successfully');
       await this.client.$connect();
       this.logger.log('Database connections initialized successfully 🚀');
