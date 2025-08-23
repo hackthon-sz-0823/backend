@@ -28,7 +28,7 @@ import {
 export class ClassificationService {
   private readonly logger = new Logger(ClassificationService.name);
   private readonly mastraBaseUrl =
-    process.env.MASTRA_API_URL || 'http://localhost:4111';
+    process.env.MASTRA_API_URL || 'http://localhost:4111/api/agents/wasteClassifier/generate';
   private readonly mastraTimeout = parseInt(
     process.env.MASTRA_TIMEOUT_MS || '30000',
     10,
@@ -231,7 +231,7 @@ export class ClassificationService {
     try {
       this.logger.log(`Mastra API调用开始`);
 
-      const agentEndpoint = `${this.mastraBaseUrl}/api/agents/wasteClassifier/generate`;
+      const agentEndpoint = this.mastraBaseUrl;
       console.log('调用 Agent:', agentEndpoint);
 
       const response = await fetch(agentEndpoint, {
