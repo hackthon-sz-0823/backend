@@ -399,6 +399,8 @@ export class NftService {
               imageUrl: true,
               rarity: true,
               category: true,
+              tokenId: true,
+              contractAddress: true,
             },
           },
         },
@@ -407,9 +409,15 @@ export class NftService {
 
       return ownedNfts.map((claim) => ({
         claimId: claim.id,
-        nft: claim.nftPool,
+        nft: {
+          ...claim.nftPool,
+          tokenId: claim.nftPool.tokenId,
+          contractAddress: claim.nftPool.contractAddress,
+        },
         claimedAt: claim.confirmedAt,
         transactionHash: claim.transactionHash,
+        tokenId: claim.nftPool.tokenId,
+        contractAddress: claim.nftPool.contractAddress,
       }));
     } catch (error) {
       this.logger.error(

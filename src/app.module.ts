@@ -31,6 +31,8 @@ import { CommonModule } from './common/common.module';
       }),
       // 确保 GraphQL 路径正确
       path: '/graphql',
+      // 禁用 CSRF 保护
+      csrfPrevention: false,
     }),
     CommonModule,
     SharedModule,

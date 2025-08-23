@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🚀 开始完整部署流程..."
+echo "🚀 开始简化部署流程..."
 
 # 清理之前的构建
 echo "📁 清理构建目录..."
@@ -52,30 +52,43 @@ if [ -z "$ADMIN_WALLET_ADDRESS" ]; then
     exit 1
 fi
 
+if [ -z "$NFT_CONTRACT_ADDRESS" ]; then
+    echo "❌ NFT_CONTRACT_ADDRESS 未配置"
+    exit 1
+fi
+
+if [ -z "$SEPOLIA_RPC_URL" ]; then
+    echo "❌ SEPOLIA_RPC_URL 未配置"
+    exit 1
+fi
+
 echo "✅ 配置验证通过："
 echo "   数据库: $(echo $DATABASE_URL | sed 's/:.*@/:***@/')"
 echo "   钱包地址: $ADMIN_WALLET_ADDRESS"
+echo "   NFT合约地址: $NFT_CONTRACT_ADDRESS"
+echo "   Sepolia RPC: $(echo $SEPOLIA_RPC_URL | sed 's|://.*@|://***@|')"
 
 # SAM 部署
-echo "🚀 开始 SAM 部署..."
+echo "🚀 开始 SAM 部署（简化版本）..."
 
 # 验证模板
-sam validate --template template.yaml
+sam validate --template template-simple.yaml
 
 echo "🎯 使用 SAM 部署..."
 sam deploy \
-    --template-file template.yaml \
-    --stack-name waste-classification-api \
+    --template-file template-simple.yaml \
+    --stack-name waste-classification-simple \
     --capabilities CAPABILITY_IAM \
     --resolve-s3 \
     --parameter-overrides \
-        CreateNATGateway="false" \
         DatabaseUrl="$DATABASE_URL" \
         AdminPrivateKey="$ADMIN_PRIVATE_KEY" \
         PinataApiKey="$PINATA_API_KEY" \
         PinataSecretApiKey="$PINATA_SECRET_API_KEY" \
         PinataJwt="$PINATA_JWT" \
         AdminWalletAddress="$ADMIN_WALLET_ADDRESS" \
+        NftContractAddress="$NFT_CONTRACT_ADDRESS" \
+        SepoliaRpcUrl="$SEPOLIA_RPC_URL" \
         MastraApiUrl="$MASTRA_API_URL" \
         MastraTimeoutMs="$MASTRA_TIMEOUT_MS" \
         MastraRetryCount="$MASTRA_RETRY_COUNT"
@@ -84,7 +97,7 @@ echo "✨ 部署完成!"
 
 # 获取部署信息
 echo "📋 获取部署信息..."
-STACK_NAME="waste-classification-api"
+STACK_NAME="waste-classification-simple"
 
 # API Gateway URL
 API_URL=$(aws cloudformation describe-stacks \
@@ -101,5 +114,9 @@ LAMBDA_ARN=$(aws cloudformation describe-stacks \
 echo "🎉 === 部署成功 ==="
 echo "🌐 API Gateway URL: $API_URL"
 echo "⚡ Lambda Function ARN: $LAMBDA_ARN"
-echo "🎨 GraphQL Playground: ${API_URL}api/graphql"
-echo "📚 Swagger 文档: ${API_URL}api/docs"
+echo "🎨 GraphQL Playground: ${API_URL}graphql"
+echo "📚 REST API 测试: ${API_URL}rest-demo/users"
+echo "🗑️ 垃圾分类测试: ${API_URL}classification"
+echo ""
+echo "🧪 快速测试命令:"
+echo "curl -X GET \"${API_URL}rest-demo/users\""

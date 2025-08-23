@@ -1,14 +1,14 @@
 # SAM 配置文件 - samconfig.toml
 
-version = 0.1
+version = 0.4
 
 [default]
 [default.global]
 [default.global.parameters]
-stack_name = "waste-classification-prod"
+stack_name = "waste-classification-v1"
 region = "us-east-1"
 confirm_changeset = false
-s3_prefix = "waste-classification-prod"
+s3_prefix = "waste-classification-v1"
 capabilities = "CAPABILITY_IAM"
 disable_rollback = false
 image_repositories = []
@@ -20,8 +20,8 @@ parallel = true
 
 [default.deploy]
 [default.deploy.parameters]
-stack_name = "waste-classification-api"
-s3_prefix = "waste-classification-api"
+stack_name = "waste-classification-v1"
+s3_prefix = "waste-classification-v1"
 region = "us-east-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"

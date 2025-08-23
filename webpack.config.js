@@ -14,13 +14,10 @@ module.exports = {
             new TerserPlugin({
                 terserOptions: {
                     compress: {
-                        drop_console: true, // 移除 console
                         drop_debugger: true,
-                        pure_funcs: ['console.log', 'console.info', 'console.debug'],
+                        pure_funcs: ['console.debug'],
                     },
-                    mangle: {
-                        keep_fnames: true, // 保持函数名，Lambda 需要
-                    },
+                    mangle: false, // 完全禁用名称压缩，保持 NestJS 反射正常工作
                     format: {
                         comments: false, // 移除注释
                     },

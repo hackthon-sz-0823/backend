@@ -1,74 +1,54 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import {
-  Context,
-  APIGatewayProxyEvent,
-  APIGatewayProxyResult,
-} from 'aws-lambda';
-import * as express from 'express';
-import * as awsServerlessExpress from 'aws-serverless-express';
-import { Server } from 'http';
+import { Callback, Context, Handler } from 'aws-lambda';
+// 添加这两行导入
+import { configure as serverlessExpress } from '@vendia/serverless-express';
+import { Application } from 'express';
 
-let cachedServer: Server | null = null;
+let server: Handler;
 
-async function createNestServer(): Promise<Server> {
-  if (!cachedServer) {
-    const expressApp = express();
-    const adapter = new ExpressAdapter(expressApp);
+async function bootstrap(): Promise<Handler> {
+  const app = await NestFactory.create(AppModule);
 
-    const app = await NestFactory.create(AppModule, adapter);
+  // 全局配置 - 移除全局前缀，因为API Gateway已经有了/api/前缀
+  // app.setGlobalPrefix('api');
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true, // 自动转换类型
+      whitelist: true, // 去除未定义的属性
+    }),
+  );
 
-    // 全局配置
-    app.setGlobalPrefix('api');
-    app.useGlobalPipes(
-      new ValidationPipe({
-        transform: true,
-        whitelist: true,
-      }),
-    );
+  // CORS 配置
+  app.enableCors({
+    origin: '*',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Origin',
+      'X-Requested-With',
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'X-API-Key',
+      'Apollo-Require-Preflight',
+      'X-Apollo-Operation-Name',
+    ],
+  });
+  await app.init();
 
-    app.enableCors({
-      origin: true,
-      credentials: true,
-    });
-
-    // Swagger配置 - 仅在开发环境
-    if (process.env.NODE_ENV !== 'production') {
-      const config = new DocumentBuilder()
-        .setTitle('智慧垃圾分类系统nest应用')
-        .setDescription('智慧垃圾分类系统接口文档')
-        .setVersion('1.0')
-        .build();
-      const documentFactory = () => SwaggerModule.createDocument(app, config);
-      SwaggerModule.setup('docs', app, documentFactory);
-    }
-
-    await app.init();
-    cachedServer = awsServerlessExpress.createServer(expressApp);
-  }
-  return cachedServer;
+  const expressApp = app.getHttpAdapter().getInstance() as Application;
+  return serverlessExpress({ app: expressApp });
 }
 
-export const handler = async (
-  event: APIGatewayProxyEvent,
+export const handler: Handler = async (
+  event: any,
   context: Context,
-): Promise<APIGatewayProxyResult> => {
-  try {
-    const server = await createNestServer();
-    return awsServerlessExpress.proxy(server, event, context, 'PROMISE')
-      .promise as Promise<APIGatewayProxyResult>;
-  } catch (error) {
-    console.error('Lambda handler error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' }),
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-    };
-  }
+  callback: Callback,
+) => {
+  server = server ?? (await bootstrap());
+  return server(event, context, callback);
 };

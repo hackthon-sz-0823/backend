@@ -1,5 +1,6 @@
 export const NFT_CONTRACT_ADDRESS =
-  '0xDCE081D543A81706d112f590c4091e3A8b074055' as const;
+  process.env.NFT_CONTRACT_ADDRESS ||
+  ('0xDCE081D543A81706d112f590c4091e3A8b074055' as const);
 
 export const WASTEWISE_ABI = [
   {
