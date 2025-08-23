@@ -8,31 +8,22 @@ export type WalletAchievementWithAchievement =
     include: { achievement: true };
   }>;
 
-// Mastra工作流相关类型 - 外部API类型定义
-export interface MastraWorkflowInput {
+// Mastra Agent 相关类型 - 简化版本
+export interface MastraAgentInput {
   imageUrl: string;
   expectedCategory: string;
   userLocation: string;
 }
 
-export interface MastraAnalysisData {
-  detectedCategory: string;
-  confidence: number;
-  description: string;
-  characteristics: string[];
-  materialType: string;
-  disposalInstructions: string;
-}
-
-export interface MastraWorkflowResponse {
+// Agent 响应的核心数据
+export interface MastraAgentResponse {
+  ai_detected_category: string;
+  ai_confidence: number;
+  is_correct: boolean;
   score: number;
-  match: boolean;
-  reasoning: string;
-  suggestions: string[];
-  improvementTips: string[];
-  detailedAnalysis: string;
-  learningPoints: string[];
-  analysisData: MastraAnalysisData;
+  ai_analysis: string;
+  ai_response: Record<string, any>;
+  processing_time_ms: number;
 }
 
 // 业务逻辑相关类型
