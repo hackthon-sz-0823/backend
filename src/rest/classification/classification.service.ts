@@ -17,8 +17,8 @@ import {
 } from './dto/classification.dto';
 import {
   ClassificationRecord,
-  MastraWorkflowInput,
-  MastraWorkflowResponse,
+  MastraAgentInput,
+  MastraAgentResponse,
   CategoryBreakdown,
   CategoryStatsItem,
   AvailableAchievement,
@@ -29,6 +29,14 @@ export class ClassificationService {
   private readonly logger = new Logger(ClassificationService.name);
   private readonly mastraBaseUrl =
     process.env.MASTRA_API_URL || 'http://localhost:4111';
+  private readonly mastraTimeout = parseInt(
+    process.env.MASTRA_TIMEOUT_MS || '30000',
+    10,
+  );
+  private readonly retryCount = parseInt(
+    process.env.MASTRA_RETRY_COUNT || '3',
+    10,
+  );
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -46,44 +54,36 @@ export class ClassificationService {
 
       // 1. 调用Mastra AI服务进行图像分析和评分
       this.logger.log(`开始分析图片: ${dto.imageUrl}`);
-      const aiResult = await this.callMastraClassificationWorkflow({
+      const aiResult = await this.callMastraAgent({
         imageUrl: dto.imageUrl,
         expectedCategory: dto.expectedCategory,
         userLocation: dto.userLocation || '中国',
       });
 
-      // 2. 保存分类记录到数据库 - 根据实际的 classifications 表结构，类型安全处理
-      const aiResponseJson: Prisma.InputJsonValue = {
-        score: aiResult.score,
-        match: aiResult.match,
-        reasoning: aiResult.reasoning,
-        suggestions: aiResult.suggestions,
-        improvementTips: aiResult.improvementTips,
-        detailedAnalysis: aiResult.detailedAnalysis,
-        learningPoints: aiResult.learningPoints,
-        analysisData: {
-          detectedCategory: aiResult.analysisData.detectedCategory,
-          confidence: aiResult.analysisData.confidence,
-          description: aiResult.analysisData.description,
-          characteristics: aiResult.analysisData.characteristics,
-          materialType: aiResult.analysisData.materialType,
-          disposalInstructions: aiResult.analysisData.disposalInstructions,
-        },
-      };
+      // 2. 保存分类记录到数据库 - 使用简化的响应格式
+      const aiResponseJson: {
+        match?: boolean;
+        score?: number;
+        reasoning?: string;
+        suggestions?: string[];
+        improvementTips?: string[];
+        detailedAnalysis?: string;
+        learningPoints?: string[];
+      } = aiResult;
 
       const classificationData: Prisma.ClassificationCreateInput = {
         imageUrl: dto.imageUrl,
         expectedCategory: dto.expectedCategory,
-        aiDetectedCategory: aiResult.analysisData.detectedCategory,
-        aiConfidence: new Prisma.Decimal(aiResult.analysisData.confidence),
-        isCorrect: aiResult.match,
+        aiDetectedCategory: aiResult.ai_detected_category,
+        aiConfidence: new Prisma.Decimal(aiResult.ai_confidence),
+        isCorrect: aiResult.is_correct,
         score: aiResult.score,
-        aiAnalysis: aiResult.detailedAnalysis, // 存储详细分析文本
-        aiResponse: aiResponseJson, // 类型安全的JSON存储
+        aiAnalysis: aiResult.ai_analysis,
+        aiResponse: aiResponseJson,
         walletAddress: dto.walletAddress,
         userLocation: dto.userLocation,
         deviceInfo: dto.deviceInfo,
-        processingTimeMs: Date.now() - startTime,
+        processingTimeMs: aiResult.processing_time_ms,
       };
 
       const classification =
@@ -91,15 +91,15 @@ export class ClassificationService {
           data: classificationData,
         });
 
-      // 3. 记录积分交易 - 根据实际的 score_transactions 表结构
+      // 3. 记录积分交易
       if (aiResult.score > 0) {
         const scoreData: Prisma.ScoreTransactionCreateInput = {
           walletAddress: dto.walletAddress,
           amount: aiResult.score,
-          type: 'classification', // 交易类型
+          type: 'classification',
           referenceId: classification.id,
           referenceType: 'classification',
-          description: `垃圾分类奖励 - ${aiResult.match ? '正确' : '参与'}分类`,
+          description: `垃圾分类奖励 - ${aiResult.is_correct ? '正确' : '参与'}分类`,
           isValid: true,
         };
 
@@ -223,96 +223,117 @@ export class ClassificationService {
   }
 
   /**
-   * 调用Mastra分类工作流
+   * 调用Mastra分类Agent
    */
-  private async callMastraClassificationWorkflow(
-    input: MastraWorkflowInput,
-  ): Promise<MastraWorkflowResponse> {
+  private async callMastraAgent(
+    input: MastraAgentInput,
+  ): Promise<MastraAgentResponse> {
     try {
-      const response = await fetch(
-        `${this.mastraBaseUrl}/workflows/classificationWorkflow/run`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(input),
-          // 增加超时时间，因为AI处理需要时间
-          signal: AbortSignal.timeout(30000), // 30秒超时
+      this.logger.log(`Mastra API调用开始`);
+
+      const agentEndpoint = `${this.mastraBaseUrl}/api/agents/wasteClassifier/generate`;
+      console.log('调用 Agent:', agentEndpoint);
+
+      const response = await fetch(agentEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: `imageUrl=${input.imageUrl}, expectedCategory=${input.expectedCategory}, userLocation=${input.userLocation || '中国'}`,
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(this.mastraTimeout),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        this.logger.error(
-          `Mastra API调用失败: ${response.status} - ${errorText}`,
+        const errorMessage = `Mastra API调用失败: ${response.status} - ${errorText}`;
+        this.logger.error(errorMessage);
+
+        if (response.status >= 400 && response.status < 500) {
+          throw new BadRequestException(`图像分析失败: ${response.statusText}`);
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      const rawResult = (await response.json()) as { text: string };
+
+      // 🔧 清理 JSON 字符串
+      let jsonStr = rawResult.text;
+
+      jsonStr = jsonStr
+        .replace(/'\s*\+\s*\n\s*'/g, '') // 移除 ' + \n '
+        .replace(/\\\n/g, '') // 移除 \n
+        .replace(/\\"/g, '"') // 处理转义引号
+        .trim();
+
+      // 找到完整的 JSON 对象
+      const startIndex = jsonStr.indexOf('{');
+      const endIndex = jsonStr.lastIndexOf('}');
+
+      if (startIndex !== -1 && endIndex !== -1) {
+        const cleanJson = jsonStr.substring(startIndex, endIndex + 1);
+
+        // 根据新的响应格式解析数据
+        const agentData = JSON.parse(cleanJson) as {
+          imageUrl?: string;
+          expectedCategory?: string;
+          userLocation?: string;
+          aiDetectedCategory?: string;
+          aiConfidence?: number;
+          isCorrect?: boolean;
+          score?: number;
+          aiAnalysis?: string;
+          aiResponse?: {
+            match?: boolean;
+            score?: number;
+            reasoning?: string;
+            suggestions?: string[];
+            improvementTips?: string[];
+            detailedAnalysis?: string;
+            learningPoints?: string[];
+          };
+          processingTimeMs?: number;
+        };
+
+        // 构造标准化的响应
+        const standardizedResponse: MastraAgentResponse = {
+          ai_detected_category: agentData.aiDetectedCategory || '未知',
+          ai_confidence: agentData.aiConfidence || 0,
+          is_correct: agentData.isCorrect || false,
+          score: agentData.isCorrect ? agentData.score || 0 : 0,
+          ai_analysis:
+            agentData.aiAnalysis ||
+            agentData.aiResponse?.detailedAnalysis ||
+            '分析失败',
+          ai_response: agentData.aiResponse || {},
+          processing_time_ms: agentData.processingTimeMs || 0,
+        };
+
+        this.logger.log(
+          `Mastra API调用成功，处理时间: ${agentData.processingTimeMs}ms`,
         );
-        throw new BadRequestException(`图像分析失败: ${response.statusText}`);
+        return standardizedResponse;
+      } else {
+        throw new Error('无法找到有效的JSON数据');
       }
-
-      const result: unknown = await response.json();
-
-      // 类型守卫：验证返回结果结构
-      if (!this.isMastraWorkflowResponse(result)) {
-        this.logger.error('Mastra返回数据格式异常:', result);
-        throw new InternalServerErrorException('AI分析结果格式异常');
-      }
-
-      return result;
     } catch (error) {
       this.logger.error(
-        `Mastra API调用异常: ${error instanceof Error ? error.message : String(error)}`,
+        `Mastra API调用失败: ${error instanceof Error ? error.message : String(error)}`,
       );
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
       throw new InternalServerErrorException('AI服务暂时不可用，请稍后重试');
     }
-  }
-
-  /**
-   * 类型守卫：验证Mastra响应格式
-   */
-  private isMastraWorkflowResponse(
-    obj: unknown,
-  ): obj is MastraWorkflowResponse {
-    if (typeof obj !== 'object' || obj === null) {
-      return false;
-    }
-
-    const response = obj as Record<string, unknown>;
-
-    return (
-      typeof response.score === 'number' &&
-      typeof response.match === 'boolean' &&
-      typeof response.reasoning === 'string' &&
-      Array.isArray(response.suggestions) &&
-      Array.isArray(response.improvementTips) &&
-      typeof response.detailedAnalysis === 'string' &&
-      Array.isArray(response.learningPoints) &&
-      typeof response.analysisData === 'object' &&
-      response.analysisData !== null &&
-      this.isAnalysisData(response.analysisData)
-    );
-  }
-
-  /**
-   * 类型守卫：验证分析数据格式
-   */
-  private isAnalysisData(
-    obj: unknown,
-  ): obj is MastraWorkflowResponse['analysisData'] {
-    if (typeof obj !== 'object' || obj === null) {
-      return false;
-    }
-
-    const data = obj as Record<string, unknown>;
-
-    return (
-      typeof data.detectedCategory === 'string' &&
-      typeof data.confidence === 'number' &&
-      typeof data.description === 'string' &&
-      Array.isArray(data.characteristics) &&
-      typeof data.materialType === 'string' &&
-      typeof data.disposalInstructions === 'string'
-    );
   }
 
   /**
@@ -423,43 +444,43 @@ export class ClassificationService {
     // 类型安全地处理 aiResponse
     const aiResponse = classification.aiResponse;
 
-    // 使用辅助方法安全地提取数据
+    // 使用辅助方法安全地提取数据 - 更新为新的响应格式
     const aiDescription = this.safeGet(
       aiResponse,
-      'analysisData.description',
+      'analysisResult.description',
       classification.aiAnalysis || '',
     ) as string;
 
     const characteristics = this.safeGetArray(
       aiResponse,
-      'analysisData.characteristics',
+      'analysisResult.characteristics',
     ) as string[];
     const materialType = this.safeGet(
       aiResponse,
-      'analysisData.materialType',
+      'analysisResult.materialType',
       '',
     ) as string;
     const disposalInstructions = this.safeGet(
       aiResponse,
-      'analysisData.disposalInstructions',
+      'analysisResult.disposalInstructions',
       '',
     ) as string;
     const detailedAnalysis = this.safeGet(
       aiResponse,
-      'detailedAnalysis',
+      'scoringResult.detailedAnalysis',
       classification.aiAnalysis || '',
     ) as string;
     const learningPoints = this.safeGetArray(
       aiResponse,
-      'learningPoints',
+      'scoringResult.learningPoints',
     ) as string[];
     const suggestions = this.safeGetArray(
       aiResponse,
-      'suggestions',
+      'scoringResult.suggestions',
     ) as string[];
     const improvementTips = this.safeGetArray(
       aiResponse,
-      'improvementTips',
+      'scoringResult.improvementTips',
     ) as string[];
 
     return {

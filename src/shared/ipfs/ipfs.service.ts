@@ -70,6 +70,9 @@ export class IPFSService {
             created: new Date().toISOString(),
           },
         },
+        pinataOptions: {
+          groupId: '5fb886c6-dc6d-4b0c-8efb-432d1dd5283a', // nft group ID from Pinata
+        },
       };
 
       const resp: AxiosResponse<PinataPinResponse> = await axios.post(
@@ -115,11 +118,18 @@ export class IPFSService {
       form.append(
         'pinataMetadata',
         JSON.stringify({
+          folder: 'nft',
           name: fileName,
           keyvalues: {
             type: 'nft-image',
             created: new Date().toISOString(),
           },
+        }),
+      );
+      form.append(
+        'pinataOptions',
+        JSON.stringify({
+          groupId: '5fb886c6-dc6d-4b0c-8efb-432d1dd5283a', // nft group ID from Pinata
         }),
       );
 

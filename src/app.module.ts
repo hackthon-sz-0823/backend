@@ -4,6 +4,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { GraphQLModule } from '@nestjs/graphql';
 import { RestDemoModule } from './rest/rest-demo/rest-demo.module';
 import { GraphDemoModule } from './graphql/graph-demo/graph-demo.module';
+import { LeaderboardModule } from './graphql/leaderboard/leaderboard.module';
 import { NftModule } from './rest/nft/nft.module';
 import { SharedModule } from './shared/shared.module';
 import { AchievementModule } from './rest/achievement/achievement.module';
@@ -28,6 +29,7 @@ import { CommonModule } from './common/common.module';
     // 演示模块
     RestDemoModule,
     GraphDemoModule,
+    LeaderboardModule,
     NftModule,
     AchievementModule,
     ClassificationModule,

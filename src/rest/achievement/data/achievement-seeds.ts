@@ -17,7 +17,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '初次尝试',
     description: '完成第一次垃圾分类，迈出环保第一步！',
     scoreReward: 20,
-    iconUrl: 'https://cdn.example.com/icons/first-try.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/first_classification.jpg',
     category: AchievementCategory.MILESTONE,
     tier: AchievementTier.BRONZE,
     requirements: { min_classifications: 1 },
@@ -28,7 +29,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '新手签到',
     description: '连续使用应用3天，养成环保好习惯！',
     scoreReward: 30,
-    iconUrl: 'https://cdn.example.com/icons/daily-newcomer.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/daily_newcomer.jpg',
     category: AchievementCategory.STREAK,
     tier: AchievementTier.BRONZE,
     requirements: { consecutive_days: 3 },
@@ -39,7 +41,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '积分新手',
     description: '累计获得100积分，证明你的环保决心！',
     scoreReward: 50,
-    iconUrl: 'https://cdn.example.com/icons/score-beginner.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/score_beginner.jpg',
     category: AchievementCategory.MILESTONE,
     tier: AchievementTier.BRONZE,
     requirements: { min_score: 100 },
@@ -50,7 +53,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '准确起步',
     description: '在前10次分类中达到70%准确率',
     scoreReward: 40,
-    iconUrl: 'https://cdn.example.com/icons/accuracy-starter.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/accuracy_starter.jpg',
     category: AchievementCategory.ACCURACY,
     tier: AchievementTier.BRONZE,
     requirements: { min_accuracy: 70, min_classifications: 10 },
@@ -65,7 +69,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '分类爱好者',
     description: '完成50次垃圾分类，你已经是环保达人了！',
     scoreReward: 100,
-    iconUrl: 'https://cdn.example.com/icons/enthusiast.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/classification_enthusiast.jpg',
     category: AchievementCategory.MILESTONE,
     tier: AchievementTier.SILVER,
     requirements: { min_classifications: 50 },
@@ -76,7 +81,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '准确新星',
     description: '在至少20次分类中达到80%准确率',
     scoreReward: 150,
-    iconUrl: 'https://cdn.example.com/icons/accuracy-rookie.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/accuracy_rookie.jpg',
     category: AchievementCategory.ACCURACY,
     tier: AchievementTier.SILVER,
     requirements: { min_accuracy: 80, min_classifications: 20 },
@@ -87,7 +93,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '周常勇士',
     description: '连续使用应用7天，坚持就是胜利！',
     scoreReward: 80,
-    iconUrl: 'https://cdn.example.com/icons/weekly-warrior.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/weekly_warrior.jpg',
     category: AchievementCategory.STREAK,
     tier: AchievementTier.SILVER,
     requirements: { consecutive_days: 7 },
@@ -98,7 +105,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '分类探索者',
     description: '正确分类所有4种垃圾类型',
     scoreReward: 120,
-    iconUrl: 'https://cdn.example.com/icons/explorer.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/category_explorer.jpg',
     category: AchievementCategory.SPECIAL,
     tier: AchievementTier.SILVER,
     requirements: {
@@ -116,7 +124,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '分类大师',
     description: '完成500次垃圾分类，你是真正的环保专家！',
     scoreReward: 500,
-    iconUrl: 'https://cdn.example.com/icons/master.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/classification_master.jpg',
     category: AchievementCategory.MILESTONE,
     tier: AchievementTier.GOLD,
     requirements: { min_classifications: 500 },
@@ -127,7 +136,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '精准专家',
     description: '在至少100次分类中达到95%准确率',
     scoreReward: 800,
-    iconUrl: 'https://cdn.example.com/icons/accuracy-expert.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/accuracy_expert.jpg',
     category: AchievementCategory.ACCURACY,
     tier: AchievementTier.GOLD,
     requirements: { min_accuracy: 95, min_classifications: 100 },
@@ -138,7 +148,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '积分收集家',
     description: '累计获得5000积分，财富自由指日可待！',
     scoreReward: 300,
-    iconUrl: 'https://cdn.example.com/icons/collector.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/score_collector.jpg',
     category: AchievementCategory.MILESTONE,
     tier: AchievementTier.GOLD,
     requirements: { min_score: 5000 },
@@ -149,7 +160,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '月度冠军',
     description: '连续使用应用30天，毅力超群！',
     scoreReward: 400,
-    iconUrl: 'https://cdn.example.com/icons/monthly-champion.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/monthly_champion.jpg',
     category: AchievementCategory.STREAK,
     tier: AchievementTier.GOLD,
     requirements: { consecutive_days: 30 },
@@ -164,7 +176,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '分类导师',
     description: '完成1000次垃圾分类，可以开班授课了！',
     scoreReward: 1000,
-    iconUrl: 'https://cdn.example.com/icons/guru.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/classification_guru.jpg',
     category: AchievementCategory.MILESTONE,
     tier: AchievementTier.PLATINUM,
     requirements: { min_classifications: 1000 },
@@ -175,7 +188,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '完美主义者',
     description: '在至少500次分类中达到99%准确率',
     scoreReward: 1500,
-    iconUrl: 'https://cdn.example.com/icons/perfectionist.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/perfect_accuracy.jpg',
     category: AchievementCategory.ACCURACY,
     tier: AchievementTier.PLATINUM,
     requirements: { min_accuracy: 99, min_classifications: 500 },
@@ -186,7 +200,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '积分富翁',
     description: '累计获得10000积分，真正的积分大亨！',
     scoreReward: 800,
-    iconUrl: 'https://cdn.example.com/icons/millionaire.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/score_millionaire.jpg',
     category: AchievementCategory.MILESTONE,
     tier: AchievementTier.PLATINUM,
     requirements: { min_score: 10000 },
@@ -197,7 +212,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '闪电分类师',
     description: '在1小时内完成20次正确分类',
     scoreReward: 600,
-    iconUrl: 'https://cdn.example.com/icons/rapid.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/rapid_classifier.jpg',
     category: AchievementCategory.SPECIAL,
     tier: AchievementTier.PLATINUM,
     requirements: {
@@ -216,7 +232,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '环保传说',
     description: '完成2000次分类且准确率99%+，环保界的传奇人物！',
     scoreReward: 2000,
-    iconUrl: 'https://cdn.example.com/icons/legend.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/eco_legend.jpg',
     category: AchievementCategory.SPECIAL,
     tier: AchievementTier.DIAMOND,
     requirements: {
@@ -230,7 +247,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '终极大师',
     description: '完成5000次分类，您就是垃圾分类的最高权威！',
     scoreReward: 3000,
-    iconUrl: 'https://cdn.example.com/icons/ultimate.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/ultimate_master.jpg',
     category: AchievementCategory.MILESTONE,
     tier: AchievementTier.DIAMOND,
     requirements: { min_classifications: 5000 },
@@ -241,7 +259,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '忠诚泰坦',
     description: '连续使用应用365天，一年的坚持令人敬佩！',
     scoreReward: 2500,
-    iconUrl: 'https://cdn.example.com/icons/titan.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/loyalty_titan.jpg',
     category: AchievementCategory.STREAK,
     tier: AchievementTier.DIAMOND,
     requirements: { consecutive_days: 365 },
@@ -256,7 +275,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '地球日英雄',
     description: '在地球日期间完成50次分类',
     scoreReward: 300,
-    iconUrl: 'https://cdn.example.com/icons/earth-day.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/earth_day_hero.jpg',
     category: AchievementCategory.SEASONAL,
     tier: AchievementTier.GOLD,
     requirements: { min_classifications: 50 },
@@ -270,7 +290,8 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     name: '新年决心者',
     description: '在新年第一周连续使用应用7天',
     scoreReward: 200,
-    iconUrl: 'https://cdn.example.com/icons/new-year.png',
+    iconUrl:
+      'https://ivory-personal-goat-759.mypinata.cloud/ipfs/bafybeifg2phddntgvxwh3lxdm3dqk2jsv3ulxhe5k45kje2rtaroz5quyu/new_year_resolver.jpg',
     category: AchievementCategory.SEASONAL,
     tier: AchievementTier.SILVER,
     requirements: { consecutive_days: 7 },
@@ -278,32 +299,6 @@ export const ACHIEVEMENT_SEEDS: CreateAchievementDto[] = [
     validUntil: '2025-01-07T23:59:59Z',
     maxClaims: 500,
     sortOrder: 21,
-  },
-
-  // ==========================================
-  // 社交成就 - 未来扩展
-  // ==========================================
-  {
-    code: 'first_share',
-    name: '分享达人',
-    description: '首次分享您的成就到社交媒体',
-    scoreReward: 100,
-    iconUrl: 'https://cdn.example.com/icons/share.png',
-    category: AchievementCategory.SOCIAL,
-    tier: AchievementTier.BRONZE,
-    requirements: { min_score: 0 }, // 手动触发
-    sortOrder: 22,
-  },
-  {
-    code: 'community_helper',
-    name: '社区助手',
-    description: '帮助其他用户学习垃圾分类知识',
-    scoreReward: 250,
-    iconUrl: 'https://cdn.example.com/icons/helper.png',
-    category: AchievementCategory.SOCIAL,
-    tier: AchievementTier.SILVER,
-    requirements: { min_score: 1000 }, // 需要一定基础
-    sortOrder: 23,
   },
 ];
 
