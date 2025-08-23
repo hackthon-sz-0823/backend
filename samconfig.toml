@@ -1,0 +1,38 @@
+# SAM 配置文件 - samconfig.toml
+
+version = 0.1
+
+[default]
+[default.global]
+[default.global.parameters]
+stack_name = "waste-classification-prod"
+region = "us-east-1"
+confirm_changeset = false
+s3_prefix = "waste-classification-prod"
+capabilities = "CAPABILITY_IAM"
+disable_rollback = false
+image_repositories = []
+
+[default.build]
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "waste-classification-api"
+s3_prefix = "waste-classification-api"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+disable_rollback = false
+image_repositories = []
+parameter_overrides = []
+
+[default.local_start_api]
+[default.local_start_api.parameters]
+warm_containers = "EAGER"
+
+[default.local_start_lambda]
+[default.local_start_lambda.parameters]
+warm_containers = "EAGER"
