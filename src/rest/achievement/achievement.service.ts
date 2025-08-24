@@ -818,15 +818,16 @@ export class AchievementService {
     }
 
     const missingRequirements: string[] = [];
-    let totalRequirements = 0;
-    let metRequirements = 0;
+    let totalWeightedProgress = 0;
+    let totalWeight = 0;
 
     // 检查积分要求
     if (requirements.min_score !== undefined) {
-      totalRequirements++;
-      if (userStats.netScore >= requirements.min_score) {
-        metRequirements++;
-      } else {
+      totalWeight += 1;
+      const scoreProgress = Math.min(100, (userStats.netScore / requirements.min_score) * 100);
+      totalWeightedProgress += scoreProgress;
+      
+      if (userStats.netScore < requirements.min_score) {
         missingRequirements.push(
           `需要 ${requirements.min_score} 积分，当前 ${userStats.netScore}`,
         );
@@ -835,10 +836,11 @@ export class AchievementService {
 
     // 检查准确率要求
     if (requirements.min_accuracy !== undefined) {
-      totalRequirements++;
-      if (userStats.classificationAccuracy >= requirements.min_accuracy) {
-        metRequirements++;
-      } else {
+      totalWeight += 1;
+      const accuracyProgress = Math.min(100, (userStats.classificationAccuracy / requirements.min_accuracy) * 100);
+      totalWeightedProgress += accuracyProgress;
+      
+      if (userStats.classificationAccuracy < requirements.min_accuracy) {
         missingRequirements.push(
           `需要 ${requirements.min_accuracy}% 准确率，当前 ${userStats.classificationAccuracy}%`,
         );
@@ -847,26 +849,27 @@ export class AchievementService {
 
     // 检查分类次数要求
     if (requirements.min_classifications !== undefined) {
-      totalRequirements++;
+      totalWeight += 1;
       // 实际查询用户分类次数
       const userClassifications =
         await this.prisma.prismaClient.classification.count({
           where: { walletAddress },
         });
 
-      if (userClassifications >= requirements.min_classifications) {
-        metRequirements++;
-      } else {
+      const classificationProgress = Math.min(100, (userClassifications / requirements.min_classifications) * 100);
+      totalWeightedProgress += classificationProgress;
+
+      if (userClassifications < requirements.min_classifications) {
         missingRequirements.push(
           `需要 ${requirements.min_classifications} 次分类，当前 ${userClassifications}`,
         );
       }
     }
 
-    // 计算进度百分比
+    // 计算加权平均进度百分比
     const actualProgress =
-      totalRequirements > 0
-        ? Math.round((metRequirements / totalRequirements) * 100)
+      totalWeight > 0
+        ? Math.round(totalWeightedProgress / totalWeight)
         : 0;
 
     return { actualProgress, missingRequirements };

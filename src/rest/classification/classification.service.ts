@@ -309,7 +309,7 @@ export class ClassificationService {
           ai_detected_category: agentData.aiDetectedCategory || '未知',
           ai_confidence: agentData.aiConfidence || 0,
           is_correct: agentData.isCorrect || false,
-          score: agentData.isCorrect ? agentData.score || 0 : 0,
+          score: agentData.score || 0,
           ai_analysis:
             agentData.aiAnalysis ||
             agentData.aiResponse?.detailedAnalysis ||

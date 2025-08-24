@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
-Description: 'WasteWise 简化部署 - 无VPC版本'
+Description: 'WasteWise'
 
 Parameters:
   DatabaseUrl:
