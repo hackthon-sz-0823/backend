@@ -129,7 +129,7 @@ export class IPFSService {
       form.append(
         'pinataOptions',
         JSON.stringify({
-          groupId: '5fb886c6-dc6d-4b0c-8efb-432d1dd5283a', // nft group ID from Pinata
+          cidVersion: 1, // 使用CIDv1以获得更好的兼容性
         }),
       );
 
@@ -183,10 +183,16 @@ export class IPFSService {
 
     // 处理图片URL - 如果是相对路径，转换为完整的HTTPS URL
     let imageUrl = params.imageUrl;
-    if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('ipfs://')) {
+    if (
+      imageUrl &&
+      !imageUrl.startsWith('http') &&
+      !imageUrl.startsWith('ipfs://')
+    ) {
       // 使用 Picsum 作为占位图服务，或者可以配置一个图片服务器
       imageUrl = `https://picsum.photos/400/400?random=${encodeURIComponent(params.name)}`;
-      this.logger.log(`Converting relative image path to placeholder: ${params.imageUrl} -> ${imageUrl}`);
+      this.logger.log(
+        `Converting relative image path to placeholder: ${params.imageUrl} -> ${imageUrl}`,
+      );
     }
 
     return {
