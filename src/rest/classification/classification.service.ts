@@ -23,7 +23,6 @@ import {
   CategoryStatsItem,
   AvailableAchievement,
 } from './classification.types';
-import { AchievementService } from '@src/rest/achievement/achievement.service';
 import { WalletUtil } from '@src/common/utils/wallet.util';
 
 @Injectable()
@@ -41,10 +40,7 @@ export class ClassificationService {
     10,
   );
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly achievementService: AchievementService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * 创建新的垃圾分类记录
@@ -113,13 +109,6 @@ export class ClassificationService {
           data: scoreData,
         });
       }
-
-      // 4. 异步更新成就进度和NFT解锁状态
-      this.updateAchievementProgressAsync(dto.walletAddress).catch((error) => {
-        this.logger.error(
-          `成就进度更新失败 for ${dto.walletAddress}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      });
 
       this.logger.log(
         `分类完成: ID=${classification.id}, 得分=${aiResult.score}, 用时=${Date.now() - startTime}ms`,
@@ -446,61 +435,6 @@ export class ClassificationService {
   private safeGetArray(obj: unknown, path: string): unknown[] {
     const value = this.safeGet(obj, path, []);
     return Array.isArray(value) ? value : [];
-  }
-
-  /**
-   * 异步更新用户成就进度
-   */
-  private async updateAchievementProgressAsync(
-    walletAddress: string,
-  ): Promise<void> {
-    try {
-      this.logger.log(`开始更新成就进度: ${walletAddress}`);
-
-      // 获取用户所有成就
-      const userAchievements =
-        await this.achievementService.getUserAchievements({
-          walletAddress,
-        });
-
-      // 检查是否有新的可完成成就
-      const newlyCompletedAchievements = userAchievements.filter(
-        (achievement) =>
-          achievement.progress >= 100 && !achievement.isCompleted,
-      );
-
-      if (newlyCompletedAchievements.length > 0) {
-        this.logger.log(
-          `发现 ${newlyCompletedAchievements.length} 个新完成的成就 for ${walletAddress}`,
-        );
-
-        // 逐个更新新完成的成就
-        for (const achievement of newlyCompletedAchievements) {
-          try {
-            await this.achievementService.updateUserProgress({
-              walletAddress,
-              achievementId: achievement.id,
-              progress: 100,
-              forceComplete: true,
-            });
-
-            this.logger.log(
-              `成就完成: ${achievement.name} for ${walletAddress}`,
-            );
-          } catch (error) {
-            this.logger.error(
-              `更新成就失败 ${achievement.name}: ${error instanceof Error ? error.message : String(error)}`,
-            );
-          }
-        }
-      }
-
-      this.logger.log(`成就进度更新完成: ${walletAddress}`);
-    } catch (error) {
-      this.logger.error(
-        `成就进度更新异常: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
   }
 
   /**
