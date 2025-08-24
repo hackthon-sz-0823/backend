@@ -24,6 +24,7 @@ import {
   AvailableAchievement,
 } from './classification.types';
 import { AchievementService } from '@src/rest/achievement/achievement.service';
+import { WalletUtil } from '@src/common/utils/wallet.util';
 
 @Injectable()
 export class ClassificationService {
