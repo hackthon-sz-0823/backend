@@ -425,7 +425,6 @@ export class AchievementService {
             achievementId: { in: achievements.map((a) => a.id) },
           },
         });
-      console.log(userAchievements, 'userAchievements');
       // 创建用户成就记录映射
       const userAchievementMap = new Map(
         userAchievements.map((ua) => [ua.achievementId, ua]),
@@ -454,8 +453,9 @@ export class AchievementService {
                 normalizedAddress,
               );
 
-            const progress = userAchievement?.progress ?? actualProgress;
-            const isCompleted = userAchievement?.isCompleted ?? progress >= 100;
+            // 总是使用最新计算的进度，而不是数据库中可能过时的进度
+            const progress = actualProgress;
+            const isCompleted = progress >= 100;
             const isClaimed = userAchievement?.isClaimed ?? false;
             const canClaim = isCompleted && !isClaimed;
 
@@ -818,15 +818,19 @@ export class AchievementService {
     }
 
     const missingRequirements: string[] = [];
-    let totalRequirements = 0;
-    let metRequirements = 0;
+    let totalWeightedProgress = 0;
+    let totalWeight = 0;
 
     // 检查积分要求
     if (requirements.min_score !== undefined) {
-      totalRequirements++;
-      if (userStats.netScore >= requirements.min_score) {
-        metRequirements++;
-      } else {
+      totalWeight += 1;
+      const scoreProgress = Math.min(
+        100,
+        (userStats.netScore / requirements.min_score) * 100,
+      );
+      totalWeightedProgress += scoreProgress;
+
+      if (userStats.netScore < requirements.min_score) {
         missingRequirements.push(
           `需要 ${requirements.min_score} 积分，当前 ${userStats.netScore}`,
         );
@@ -835,10 +839,14 @@ export class AchievementService {
 
     // 检查准确率要求
     if (requirements.min_accuracy !== undefined) {
-      totalRequirements++;
-      if (userStats.classificationAccuracy >= requirements.min_accuracy) {
-        metRequirements++;
-      } else {
+      totalWeight += 1;
+      const accuracyProgress = Math.min(
+        100,
+        (userStats.classificationAccuracy / requirements.min_accuracy) * 100,
+      );
+      totalWeightedProgress += accuracyProgress;
+
+      if (userStats.classificationAccuracy < requirements.min_accuracy) {
         missingRequirements.push(
           `需要 ${requirements.min_accuracy}% 准确率，当前 ${userStats.classificationAccuracy}%`,
         );
@@ -847,29 +855,122 @@ export class AchievementService {
 
     // 检查分类次数要求
     if (requirements.min_classifications !== undefined) {
-      totalRequirements++;
+      totalWeight += 1;
       // 实际查询用户分类次数
       const userClassifications =
         await this.prisma.prismaClient.classification.count({
           where: { walletAddress },
         });
 
-      if (userClassifications >= requirements.min_classifications) {
-        metRequirements++;
-      } else {
+      const classificationProgress = Math.min(
+        100,
+        (userClassifications / requirements.min_classifications) * 100,
+      );
+      totalWeightedProgress += classificationProgress;
+
+      if (userClassifications < requirements.min_classifications) {
         missingRequirements.push(
           `需要 ${requirements.min_classifications} 次分类，当前 ${userClassifications}`,
         );
       }
     }
 
-    // 计算进度百分比
+    // 检查连续天数要求
+    if (requirements.consecutive_days !== undefined) {
+      totalWeight += 1;
+
+      // 获取用户的连续活跃天数
+      const consecutiveDays =
+        await this.getConsecutiveActiveDays(walletAddress);
+      const daysProgress = Math.min(
+        100,
+        (consecutiveDays / requirements.consecutive_days) * 100,
+      );
+      totalWeightedProgress += daysProgress;
+
+      if (consecutiveDays < requirements.consecutive_days) {
+        missingRequirements.push(
+          `需要连续活跃 ${requirements.consecutive_days} 天，当前连续 ${consecutiveDays} 天`,
+        );
+      }
+    }
+
+    // 计算加权平均进度百分比
     const actualProgress =
-      totalRequirements > 0
-        ? Math.round((metRequirements / totalRequirements) * 100)
-        : 0;
+      totalWeight > 0 ? Math.round(totalWeightedProgress / totalWeight) : 0;
 
     return { actualProgress, missingRequirements };
+  }
+
+  /**
+   * 获取用户连续活跃天数
+   */
+  private async getConsecutiveActiveDays(
+    walletAddress: string,
+  ): Promise<number> {
+    try {
+      // 获取用户最近的分类记录，按日期排序
+      const recentClassifications =
+        await this.prisma.prismaClient.classification.findMany({
+          where: { walletAddress },
+          select: { createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 500, // 取最近500条记录来计算连续天数
+        });
+
+      if (recentClassifications.length === 0) {
+        return 0;
+      }
+
+      // 转换为日期字符串集合（YYYY-MM-DD格式）
+      const activeDates = new Set<string>();
+      recentClassifications.forEach((record) => {
+        const dateStr = record.createdAt.toISOString().split('T')[0];
+        activeDates.add(dateStr);
+      });
+
+      // 转换为日期数组并排序
+      const sortedDates = Array.from(activeDates).sort().reverse();
+
+      if (sortedDates.length === 0) {
+        return 0;
+      }
+
+      // 检查今天是否活跃
+      const today = new Date().toISOString().split('T')[0];
+      let consecutiveDays = 0;
+      const currentDate = new Date();
+
+      // 从今天开始向前检查连续天数
+      while (true) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+
+        if (sortedDates.includes(dateStr)) {
+          consecutiveDays++;
+          // 移动到前一天
+          currentDate.setDate(currentDate.getDate() - 1);
+        } else {
+          // 如果今天没有活动，但昨天有，还是可以从昨天开始计算
+          if (consecutiveDays === 0 && dateStr === today) {
+            currentDate.setDate(currentDate.getDate() - 1);
+            continue;
+          }
+          break;
+        }
+
+        // 防止无限循环，最多检查365天
+        if (consecutiveDays >= 365) {
+          break;
+        }
+      }
+
+      return consecutiveDays;
+    } catch (error) {
+      this.logger.error(
+        `Error calculating consecutive active days: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return 0;
+    }
   }
 
   /**

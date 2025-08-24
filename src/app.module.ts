@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { GraphQLModule } from '@nestjs/graphql';
+import { Request, Response } from 'express';
 import { RestDemoModule } from './rest/rest-demo/rest-demo.module';
 import { GraphDemoModule } from './graphql/graph-demo/graph-demo.module';
 import { LeaderboardModule } from './graphql/leaderboard/leaderboard.module';
@@ -19,10 +20,19 @@ import { CommonModule } from './common/common.module';
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      playground: true, // 启用 GraphQL Playground
+      playground: process.env.NODE_ENV !== 'production', // 仅在非生产环境启用 GraphQL Playground
       introspection: true,
       autoSchemaFile: true,
-      debug: true,
+      debug: process.env.NODE_ENV !== 'production',
+      // Lambda 兼容配置
+      context: ({ req, res }: { req: Request; res: Response }) => ({
+        req,
+        res,
+      }),
+      // 确保 GraphQL 路径正确
+      path: '/graphql',
+      // 禁用 CSRF 保护
+      csrfPrevention: false,
     }),
     CommonModule,
     SharedModule,

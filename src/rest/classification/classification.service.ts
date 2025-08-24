@@ -23,12 +23,14 @@ import {
   CategoryStatsItem,
   AvailableAchievement,
 } from './classification.types';
+import { WalletUtil } from '@src/common/utils/wallet.util';
 
 @Injectable()
 export class ClassificationService {
   private readonly logger = new Logger(ClassificationService.name);
   private readonly mastraBaseUrl =
-    process.env.MASTRA_API_URL || 'http://localhost:4111';
+    process.env.MASTRA_API_URL ||
+    'http://localhost:4111/api/agents/wasteClassifier/generate';
   private readonly mastraTimeout = parseInt(
     process.env.MASTRA_TIMEOUT_MS || '30000',
     10,
@@ -80,7 +82,7 @@ export class ClassificationService {
         score: aiResult.score,
         aiAnalysis: aiResult.ai_analysis,
         aiResponse: aiResponseJson,
-        walletAddress: dto.walletAddress,
+        walletAddress: WalletUtil.normalizeAddress(dto.walletAddress),
         userLocation: dto.userLocation,
         deviceInfo: dto.deviceInfo,
         processingTimeMs: aiResult.processing_time_ms,
@@ -94,7 +96,7 @@ export class ClassificationService {
       // 3. 记录积分交易
       if (aiResult.score > 0) {
         const scoreData: Prisma.ScoreTransactionCreateInput = {
-          walletAddress: dto.walletAddress,
+          walletAddress: WalletUtil.normalizeAddress(dto.walletAddress),
           amount: aiResult.score,
           type: 'classification',
           referenceId: classification.id,
@@ -231,7 +233,7 @@ export class ClassificationService {
     try {
       this.logger.log(`Mastra API调用开始`);
 
-      const agentEndpoint = `${this.mastraBaseUrl}/api/agents/wasteClassifier/generate`;
+      const agentEndpoint = this.mastraBaseUrl;
       console.log('调用 Agent:', agentEndpoint);
 
       const response = await fetch(agentEndpoint, {
@@ -307,7 +309,7 @@ export class ClassificationService {
           ai_detected_category: agentData.aiDetectedCategory || '未知',
           ai_confidence: agentData.aiConfidence || 0,
           is_correct: agentData.isCorrect || false,
-          score: agentData.isCorrect ? agentData.score || 0 : 0,
+          score: agentData.score || 0,
           ai_analysis:
             agentData.aiAnalysis ||
             agentData.aiResponse?.detailedAnalysis ||

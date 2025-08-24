@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: 'WasteWise'
+
+Parameters:
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: Database connection URL
+    Default: ''
+
+  AdminPrivateKey:
+    Type: String
+    Description: Admin wallet private key
+    NoEcho: true
+    Default: ''
+
+  AdminWalletAddress:
+    Type: String
+    Description: Admin wallet address
+    Default: '0x7878C4617329AD141e3834d23FCf1AA6476A6914'
+
+  NftContractAddress:
+    Type: String
+    Description: NFT contract address
+    Default: '0xDCE081D543A81706d112f590c4091e3A8b074055'
+
+  SepoliaRpcUrl:
+    Type: String
+    Description: Sepolia RPC URL
+    NoEcho: true
+    Default: ''
+
+  PinataApiKey:
+    Type: String
+    Description: Pinata API key
+    NoEcho: true
+    Default: ''
+
+  PinataSecretApiKey:
+    Type: String
+    Description: Pinata secret API key
+    NoEcho: true
+    Default: ''
+
+  PinataJwt:
+    Type: String
+    Description: Pinata JWT token
+    NoEcho: true
+    Default: ''
+
+  MastraApiUrl:
+    Type: String
+    Description: Mastra API URL
+    Default: 'http://localhost:4111'
+
+  MastraTimeoutMs:
+    Type: String
+    Description: Mastra API timeout in milliseconds
+    Default: '120000'
+
+  MastraRetryCount:
+    Type: String
+    Description: Mastra API retry count
+    Default: '3'
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 2048
+    Runtime: nodejs20.x
+    Architectures: ['arm64']
+    Environment:
+      Variables:
+        PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK: '1'
+        PRISMA_GENERATE_SKIP_DOWNLOAD: 'true'
+        PRISMA_CLI_QUERY_ENGINE_TYPE: 'library'
+        PRISMA_ENGINE_PROTOCOL: 'binary'
+        APP_ENV: 'production'
+        NODE_ENV: 'production'
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+    EphemeralStorage:
+      Size: 1024
+  Api:
+    OpenApiVersion: '3.0.1'
+    Cors:
+      AllowMethods: "'*'"
+      AllowHeaders: "'Content-Type,Authorization,X-Requested-With'"
+      AllowOrigin: "'*'"
+      MaxAge: 600
+
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: api
+      Description: WasteWise API Gateway
+      Auth:
+        DefaultAuthorizer: NONE
+      Tags:
+        Name: wastewise-api
+        Environment: production
+
+  # Lambda函数 - 无VPC配置
+  NestjsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: waste-classification-simple-production
+      Description: 'WasteWise NestJS Backend API - No VPC'
+      CodeUri: dist/
+      Handler: lambda.handler
+      MemorySize: 3008
+      Timeout: 300
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+          DATABASE_URL_READ: !Ref DatabaseUrl
+          DATABASE_URL_WRITE: !Ref DatabaseUrl
+          DATABASE_CONNECTION_LIMIT: '5'
+          ADMIN_PRIVATE_KEY: !Ref AdminPrivateKey
+          ADMIN_WALLET_ADDRESS: !Ref AdminWalletAddress
+          NFT_CONTRACT_ADDRESS: !Ref NftContractAddress
+          SEPOLIA_RPC_URL: !Ref SepoliaRpcUrl
+          PINATA_API_KEY: !Ref PinataApiKey
+          PINATA_SECRET_API_KEY: !Ref PinataSecretApiKey
+          PINATA_JWT: !Ref PinataJwt
+          MASTRA_API_URL: !Ref MastraApiUrl
+          MASTRA_TIMEOUT_MS: !Ref MastraTimeoutMs
+          MASTRA_RETRY_COUNT: !Ref MastraRetryCount
+      Events:
+        RootApi:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+            RestApiId: !Ref Api
+        ProxyApi:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref Api
+      AutoPublishAlias: live
+      Tags:
+        Name: wastewise-backend
+        Environment: production
+
+  # CloudWatch日志组
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/waste-classification-simple-production'
+      RetentionInDays: 30
+      Tags:
+        - Key: Name
+          Value: wastewise-logs
+        - Key: Environment
+          Value: production
+
+Outputs:
+  ApiGatewayUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com/api/'
+    Export:
+      Name: !Sub '${AWS::StackName}-API-URL'
+
+  LambdaFunction:
+    Description: Lambda Function ARN
+    Value: !GetAtt NestjsFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-FUNCTION-ARN'

@@ -51,7 +51,13 @@ export class BlockchainService {
 
   private initializeBlockchain(): void {
     try {
-      const rpcUrl = process.env.SEPOLIA_RPC_URL;
+      const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL;
+      if (!rpcUrl) {
+        throw new Error(
+          'RPC_URL or SEPOLIA_RPC_URL environment variable is required',
+        );
+      }
+      this.logger.log(`Connecting to RPC: ${rpcUrl}`);
       this.provider = new ethers.JsonRpcProvider(rpcUrl);
 
       // 初始化管理员钱包

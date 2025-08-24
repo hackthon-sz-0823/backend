@@ -2,14 +2,35 @@ const path = require('path');
 const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
+
 module.exports = {
     entry: './src/lambda.ts',
     target: 'node',
     mode: 'production',
+    optimization: {
+        minimize: true,
+        minimizer: [
+            new TerserPlugin({
+                terserOptions: {
+                    compress: {
+                        drop_debugger: true,
+                        pure_funcs: ['console.debug'],
+                    },
+                    mangle: false, // 完全禁用名称压缩，保持 NestJS 反射正常工作
+                    format: {
+                        comments: false, // 移除注释
+                    },
+                },
+                extractComments: false,
+            }),
+        ],
+        usedExports: true,
+        sideEffects: false,
+    },
     resolve: {
-        extensions: ['.ts', '.js'],
+        extensions: ['.ts', '.js', '.json'],
         plugins: [
-            // 自动读取 tsconfig.json 中的 paths 配置
             new TsconfigPathsPlugin({
                 configFile: './tsconfig.json'
             })
@@ -22,13 +43,24 @@ module.exports = {
             '@nestjs/microservices': false,
             '@nestjs/websockets': false,
             'cache-manager': false,
+            // GraphQL 相关的可选依赖
+            '@as-integrations/fastify': false,
+            '@apollo/subgraph': false,
+            '@apollo/gateway': false,
+            'ts-morph': false,
         },
     },
     module: {
         rules: [
             {
                 test: /\.ts$/,
-                use: 'ts-loader',
+                use: {
+                    loader: 'ts-loader',
+                    options: {
+                        transpileOnly: true,
+                        configFile: 'tsconfig.build.json',
+                    }
+                },
                 exclude: /node_modules/,
             },
         ],
@@ -37,35 +69,43 @@ module.exports = {
         path: path.resolve(__dirname, 'dist'),
         filename: 'lambda.js',
         libraryTarget: 'commonjs2',
+        clean: true,
     },
     plugins: [
         new CopyWebpackPlugin({
             patterns: [
-                // 复制整个 .prisma 目录
+                // 复制 Prisma 相关文件
                 {
                     from: path.resolve(__dirname, 'node_modules/.prisma'),
                     to: path.resolve(__dirname, 'dist/node_modules/.prisma'),
-                    noErrorOnMissing: false, // 如果缺失就报错
-                    info: { minimized: true }, // 显示复制信息
+                    noErrorOnMissing: true,
                 },
-                // 复制整个 @prisma/client 目录
                 {
                     from: path.resolve(__dirname, 'node_modules/@prisma/client'),
                     to: path.resolve(__dirname, 'dist/node_modules/@prisma/client'),
-                    noErrorOnMissing: false,
-                    info: { minimized: true },
+                    noErrorOnMissing: true,
                 },
-                // 复制 package.json
-                {
-                    from: path.resolve(__dirname, 'package.json'),
-                    to: path.resolve(__dirname, 'dist/package.json'),
-                    noErrorOnMissing: false,
-                },
-                // 复制 schema.prisma （如果存在）
                 {
                     from: path.resolve(__dirname, 'prisma/schema.prisma'),
                     to: path.resolve(__dirname, 'dist/prisma/schema.prisma'),
-                    noErrorOnMissing: true, // schema 可以不存在
+                    noErrorOnMissing: true,
+                },
+                // 复制简化版 package.json
+                {
+                    from: path.resolve(__dirname, 'package.json'),
+                    to: path.resolve(__dirname, 'dist/package.json'),
+                    transform(content) {
+                        const pkg = JSON.parse(content.toString());
+                        return JSON.stringify({
+                            name: pkg.name,
+                            version: pkg.version,
+                            main: 'lambda.js',
+                            dependencies: {
+                                '@prisma/client': pkg.dependencies['@prisma/client'],
+                                'aws-serverless-express': pkg.dependencies['aws-serverless-express'],
+                            }
+                        }, null, 2);
+                    },
                 },
             ],
         }),
@@ -86,6 +126,19 @@ module.exports = {
         new webpack.IgnorePlugin({
             resourceRegExp: /^@mapbox\/node-pre-gyp$/,
         }),
+        // 忽略 GraphQL 相关的可选依赖
+        new webpack.IgnorePlugin({
+            resourceRegExp: /@as-integrations\/fastify/,
+        }),
+        new webpack.IgnorePlugin({
+            resourceRegExp: /@apollo\/subgraph/,
+        }),
+        new webpack.IgnorePlugin({
+            resourceRegExp: /@apollo\/gateway/,
+        }),
+        new webpack.IgnorePlugin({
+            resourceRegExp: /ts-morph/,
+        }),
         // 定义环境变量
         new webpack.DefinePlugin({
             'process.env.NODE_ENV': JSON.stringify('production'),
@@ -99,5 +152,9 @@ module.exports = {
         /Module not found: Error: Can't resolve/,
         /Can't resolve '@nestjs\/websockets'/,
         /Can't resolve '@nestjs\/microservices'/,
+        /Can't resolve '@as-integrations\/fastify'/,
+        /Can't resolve '@apollo\/subgraph'/,
+        /Can't resolve '@apollo\/gateway'/,
+        /Can't resolve 'ts-morph'/,
     ],
 };
