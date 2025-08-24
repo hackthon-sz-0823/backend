@@ -181,10 +181,18 @@ export class IPFSService {
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9-]/g, '') || 'nft';
 
+    // 处理图片URL - 如果是相对路径，转换为完整的HTTPS URL
+    let imageUrl = params.imageUrl;
+    if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('ipfs://')) {
+      // 使用 Picsum 作为占位图服务，或者可以配置一个图片服务器
+      imageUrl = `https://picsum.photos/400/400?random=${encodeURIComponent(params.name)}`;
+      this.logger.log(`Converting relative image path to placeholder: ${params.imageUrl} -> ${imageUrl}`);
+    }
+
     return {
       name: params.name,
       description: params.description,
-      image: params.imageUrl,
+      image: imageUrl,
       attributes: [...defaultAttributes, ...(params.attributes ?? [])],
       external_url: this.frontendUrl
         ? `${this.frontendUrl}/nft/${slug}`
