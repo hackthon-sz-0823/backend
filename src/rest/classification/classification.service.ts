@@ -178,7 +178,7 @@ export class ClassificationService {
   async getUserStats(
     dto: ClassificationStatsDto,
   ): Promise<ClassificationStatsResponseDto> {
-    const { walletAddress } = dto;
+    const walletAddress = WalletUtil.normalizeAddress(dto.walletAddress);
 
     // 基础统计
     const [
