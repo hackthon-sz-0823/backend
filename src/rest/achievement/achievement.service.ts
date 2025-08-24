@@ -417,7 +417,7 @@ export class AchievementService {
         where: achievementWhere,
         orderBy: [{ tier: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
       });
-      // 获取用户的成就记录
+      // 获取用户的成就记录（仅获取已存在的记录）
       const userAchievements =
         await this.prisma.prismaClient.walletAchievement.findMany({
           where: {
@@ -425,14 +425,39 @@ export class AchievementService {
             achievementId: { in: achievements.map((a) => a.id) },
           },
         });
+
       // 创建用户成就记录映射
       const userAchievementMap = new Map(
         userAchievements.map((ua) => [ua.achievementId, ua]),
       );
 
-      // 获取用户统计数据（用于检查成就要求）
-      const userStats: UserStats =
-        await this.walletService.getWalletStats(normalizedAddress);
+      // 获取用户统计数据（用于检查成就要求） - 使用实时数据
+      const [totalScore, totalClassifications, correctClassifications] =
+        await Promise.all([
+          this.prisma.prismaClient.scoreTransaction.aggregate({
+            where: { walletAddress: normalizedAddress, isValid: true },
+            _sum: { amount: true },
+          }),
+          this.prisma.prismaClient.classification.count({
+            where: { walletAddress: normalizedAddress },
+          }),
+          this.prisma.prismaClient.classification.count({
+            where: { walletAddress: normalizedAddress, isCorrect: true },
+          }),
+        ]);
+
+      const userStats: UserStats = {
+        netScore: totalScore._sum.amount || 0,
+        classificationAccuracy:
+          totalClassifications > 0
+            ? Math.round((correctClassifications / totalClassifications) * 100)
+            : 0,
+        totalClassifications,
+        scoreEarned: totalScore._sum.amount || 0,
+        scoreSpent: 0, // 简化处理
+        averageScorePerDay: 0, // 简化处理
+        activeDays: 0, // 简化处理
+      };
 
       // 组合数据
       const results: AchievementWithProgress[] = await Promise.all(
@@ -453,10 +478,40 @@ export class AchievementService {
                 normalizedAddress,
               );
 
-            // 总是使用最新计算的进度，而不是数据库中可能过时的进度
-            const progress = actualProgress;
-            const isCompleted = progress >= 100;
-            const isClaimed = userAchievement?.isClaimed ?? false;
+            // 如果成就已完成但没有记录，则创建记录
+            let progress = actualProgress;
+            let isCompleted = actualProgress >= 100;
+            let isClaimed = false;
+            let completedAt: Date | undefined = undefined;
+            let claimedAt: Date | undefined = undefined;
+
+            if (userAchievement) {
+              // 使用已存在的记录
+              progress = userAchievement.progress;
+              isCompleted = userAchievement.isCompleted;
+              isClaimed = userAchievement.isClaimed;
+              completedAt = userAchievement.completedAt || undefined;
+              claimedAt = userAchievement.claimedAt || undefined;
+            } else if (isCompleted) {
+              // 成就完成但没有记录，创建记录
+              try {
+                const newRecord =
+                  await this.prisma.prismaClient.walletAchievement.create({
+                    data: {
+                      walletAddress: normalizedAddress,
+                      achievementId: achievement.id,
+                      progress: Math.round(actualProgress),
+                      isCompleted: true,
+                      completedAt: new Date(),
+                    },
+                  });
+                completedAt = newRecord.completedAt || undefined;
+              } catch (error) {
+                // 忽略唯一约束错误，可能是并发创建
+                this.logger.warn(`创建成就记录失败: ${error}`);
+              }
+            }
+
             const canClaim = isCompleted && !isClaimed;
 
             return {
@@ -472,8 +527,8 @@ export class AchievementService {
               progress,
               isCompleted,
               isClaimed,
-              completedAt: userAchievement?.completedAt || undefined,
-              claimedAt: userAchievement?.claimedAt || undefined,
+              completedAt,
+              claimedAt,
               canClaim,
               missingRequirements:
                 missingRequirements.length > 0
@@ -547,8 +602,8 @@ export class AchievementService {
         throw new NotFoundException(`成就 ID ${dto.achievementId} 不存在`);
       }
 
-      // 检查用户成就记录
-      const walletAchievement =
+      // 检查用户成就记录，如果没有记录则检查是否满足条件
+      let walletAchievement =
         await this.prisma.prismaClient.walletAchievement.findUnique({
           where: {
             unique_wallet_achievement: {
@@ -558,12 +613,74 @@ export class AchievementService {
           },
         });
 
-      if (!walletAchievement || !walletAchievement.isCompleted) {
-        throw new BadRequestException('成就尚未完成，无法领取奖励');
-      }
+      // 如果没有记录，检查是否满足成就条件
+      if (!walletAchievement) {
+        // 获取用户统计数据
+        const [totalScore, totalClassifications, correctClassifications] =
+          await Promise.all([
+            this.prisma.prismaClient.scoreTransaction.aggregate({
+              where: { walletAddress: normalizedAddress, isValid: true },
+              _sum: { amount: true },
+            }),
+            this.prisma.prismaClient.classification.count({
+              where: { walletAddress: normalizedAddress },
+            }),
+            this.prisma.prismaClient.classification.count({
+              where: { walletAddress: normalizedAddress, isCorrect: true },
+            }),
+          ]);
 
-      if (walletAchievement.isClaimed) {
-        throw new BadRequestException('成就奖励已经领取过了');
+        const userStats: UserStats = {
+          netScore: totalScore._sum.amount || 0,
+          classificationAccuracy:
+            totalClassifications > 0
+              ? Math.round(
+                  (correctClassifications / totalClassifications) * 100,
+                )
+              : 0,
+          totalClassifications,
+          scoreEarned: totalScore._sum.amount || 0,
+          scoreSpent: 0,
+          averageScorePerDay: 0,
+          activeDays: 0,
+        };
+
+        const requirements = achievement.requirements
+          ? (JSON.parse(
+              achievement.requirements as string,
+            ) as AchievementRequirements)
+          : undefined;
+
+        const { actualProgress } = await this.calculateProgress(
+          requirements,
+          userStats,
+          normalizedAddress,
+        );
+
+        if (actualProgress < 100) {
+          throw new BadRequestException('成就尚未完成，无法领取奖励');
+        }
+
+        // 创建成就记录
+        walletAchievement =
+          await this.prisma.prismaClient.walletAchievement.create({
+            data: {
+              walletAddress: normalizedAddress,
+              achievementId: dto.achievementId,
+              progress: 100,
+              isCompleted: true,
+              completedAt: new Date(),
+            },
+          });
+      } else {
+        // 有记录，检查状态
+        if (!walletAchievement.isCompleted) {
+          throw new BadRequestException('成就尚未完成，无法领取奖励');
+        }
+
+        if (walletAchievement.isClaimed) {
+          throw new BadRequestException('成就奖励已经领取过了');
+        }
       }
 
       // 检查领取次数限制
